@@ -2,204 +2,76 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>dash is gay</title>
   <style>
     body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
       height: 100%;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      
+      /* Dark, shifting Pride background */
+      /* It cycles through very deep, almost-black versions of the rainbow */
+      background: linear-gradient(135deg, #1a0004, #1a0a00, #1a1700, #001a07, #00081a, #11001a, #1a0004);
+      background-size: 400% 400%;
+      animation: bgShift 12s ease infinite;
+      
+      /* A very clean, bold, modern font */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       overflow: hidden;
-      background-color: #030305; /* Deep, almost black void */
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
+
+    /* Slowly pans the dark background colors */
+    @keyframes bgShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    h1 {
+      font-size: 25vw; /* Massive size */
+      font-weight: 900;
+      text-align: center;
+      margin: 0;
+      line-height: 1.1;
+      letter-spacing: -2px;
+
+      /* The Discord Role Effect: fast, seamless, bright Pride rainbow */
+      background: linear-gradient(
+        to right, 
+        #ff0018, /* Red */
+        #ffa52c, /* Orange */
+        #ffff41, /* Yellow */
+        #008018, /* Green */
+        #0000f9, /* Blue */
+        #86007d, /* Purple */
+        #ff0018  /* Loops back to Red perfectly */
+      );
+      background-size: 200% auto;
+      
+      /* Clips the gradient exclusively to the text shape */
+      color: transparent;
+      -webkit-background-clip: text;
+      background-clip: text;
+
+      /* The shining sweep animation */
+      animation: shine 2.5s linear infinite;
+
+      /* Heavy drop shadow to make the text pop off the dark background */
+      filter: drop-shadow(0px 10px 25px rgba(0, 0, 0, 0.95));
+    }
+
+    /* Pushes the gradient infinitely to the left to create the shine */
+    @keyframes shine {
+      to {
+        background-position: -200% center;
+      }
     }
   </style>
 </head>
 <body>
-
-  <canvas id="particleCanvas"></canvas>
-
-  <script>
-    const canvas = document.getElementById('particleCanvas');
-    const ctx = canvas.getContext('2d');
-
-    let particles = [];
-    let touch = { x: -1000, y: -1000, active: false };
-    let timeTick = 0; // Drives the endless seamless color loop
-
-    function resize() {
-      canvas.width = window.innerWidth * window.devicePixelRatio;
-      canvas.height = window.innerHeight * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-      initParticles();
-    }
-
-    class Particle {
-      constructor(x, y) {
-        this.targetX = x;
-        this.targetY = y;
-        this.x = x + (Math.random() - 0.5) * 50; // Spawn scattered
-        this.y = y + (Math.random() - 0.5) * 50;
-        this.baseSize = Math.random() * 2 + 2; 
-        this.size = this.baseSize;
-        
-        // Floating mechanics
-        this.angle = Math.random() * Math.PI * 2;
-        this.speed = Math.random() * 0.4 + 0.1;
-      }
-
-      update() {
-        // Organic floating motion
-        this.angle += 0.02;
-        let driftX = Math.cos(this.angle) * this.speed;
-        let driftY = Math.sin(this.angle) * this.speed;
-
-        let currentTargetX = this.targetX + driftX;
-        let currentTargetY = this.targetY + driftY;
-
-        // Reactive touch physics - dots scatter and reform
-        let dx = touch.x - this.x;
-        let dy = touch.y - this.y;
-        let distance = Math.sqrt(dx * dx + dy * dy);
-        
-        let forceDirectionX = dx / distance;
-        let forceDirectionY = dy / distance;
-        let maxDistance = 120;
-        let force = (maxDistance - distance) / maxDistance;
-        let directionX = forceDirectionX * force * 15;
-        let directionY = forceDirectionY * force * 15;
-
-        if (distance < maxDistance) {
-          this.x -= directionX;
-          this.y -= directionY;
-          this.size = this.baseSize * 2; // Swell up when touched
-        } else {
-          // Return smoothly to target
-          this.x += (currentTargetX - this.x) * 0.1;
-          this.y += (currentTargetY - this.y) * 0.1;
-          this.size = this.baseSize;
-        }
-
-        // Seamless Color Math (Flows continuously over time and position)
-        this.hue = ((this.x * 0.2) + timeTick) % 360;
-        this.color = `hsl(${this.hue}, 90%, 65%)`;
-      }
-
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        
-        // Glow effect
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = this.color;
-        ctx.fill();
-        ctx.shadowBlur = 0; 
-      }
-    }
-
-    function initParticles() {
-      particles = [];
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-
-      const tCanvas = document.createElement('canvas');
-      const tCtx = tCanvas.getContext('2d');
-      tCanvas.width = w;
-      tCanvas.height = h;
-
-      // Adjust text size for mobile bounds
-      const fontSize = Math.min(w * 0.25, 120); 
-      tCtx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
-      tCtx.textAlign = 'center';
-      tCtx.textBaseline = 'middle';
-      tCtx.fillStyle = 'white';
-
-      // Draw text ("dash" on top, "is gay" on bottom)
-      tCtx.fillText('dash', w / 2, h / 2 - fontSize * 0.55);
-      tCtx.fillText('is gay', w / 2, h / 2 + fontSize * 0.55);
-
-      const imgData = tCtx.getImageData(0, 0, w, h).data;
-      const gap = Math.min(7, Math.max(4, Math.floor(w / 70))); // Particle density
-
-      for (let y = 0; y < h; y += gap) {
-        for (let x = 0; x < w; x += gap) {
-          const index = (y * w + x) * 4;
-          const alpha = imgData[index + 3];
-
-          if (alpha > 128) {
-            particles.push(new Particle(x, y));
-          }
-        }
-      }
-    }
-
-    function animate() {
-      timeTick += 1.5; // Controls the speed of the color flow
-
-      // Trailing dark background (creates motion blur)
-      ctx.fillStyle = 'rgba(3, 3, 5, 0.3)';
-      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
-
-      // Draw reactive connecting lines to the touch point
-      if (touch.active) {
-        for (let i = 0; i < particles.length; i++) {
-          let dx = touch.x - particles[i].x;
-          let dy = touch.y - particles[i].y;
-          let distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < 100) {
-            ctx.beginPath();
-            ctx.strokeStyle = particles[i].color;
-            ctx.lineWidth = 0.5;
-            ctx.globalAlpha = 1 - (distance / 100);
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(touch.x, touch.y);
-            ctx.stroke();
-            ctx.globalAlpha = 1; // reset alpha
-          }
-        }
-      }
-
-      // Update and draw particles
-      for (let i = 0; i < particles.length; i++) {
-        particles[i].update();
-        particles[i].draw();
-      }
-
-      requestAnimationFrame(animate);
-    }
-
-    // Mobile touch listeners
-    window.addEventListener('touchstart', (e) => {
-      touch.active = true;
-      touch.x = e.touches[0].clientX;
-      touch.y = e.touches[0].clientY;
-    }, { passive: true });
-
-    window.addEventListener('touchmove', (e) => {
-      touch.active = true;
-      touch.x = e.touches[0].clientX;
-      touch.y = e.touches[0].clientY;
-    }, { passive: true });
-
-    window.addEventListener('touchend', () => {
-      touch.active = false;
-      touch.x = -1000;
-      touch.y = -1000;
-    });
-
-    window.addEventListener('resize', resize);
-    
-    // Initialize
-    resize();
-    animate();
-  </script>
+  <h1>dash<br>is gay</h1>
 </body>
 </html>
