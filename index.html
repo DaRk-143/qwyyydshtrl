@@ -11,7 +11,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #050508;
+      background-color: #030305; /* Deep, almost black void */
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     canvas {
@@ -30,9 +30,9 @@
     const ctx = canvas.getContext('2d');
 
     let particles = [];
-    let touch = { x: null, y: null, active: false };
+    let touch = { x: -1000, y: -1000, active: false };
+    let timeTick = 0; // Drives the endless seamless color loop
 
-    // Resize canvas for mobile screens
     function resize() {
       canvas.width = window.innerWidth * window.devicePixelRatio;
       canvas.height = window.innerHeight * window.devicePixelRatio;
@@ -41,34 +41,21 @@
     }
 
     class Particle {
-      constructor(x, y, color) {
+      constructor(x, y) {
         this.targetX = x;
         this.targetY = y;
-        // Start them slightly scattered so they assemble nicely
-        this.x = x + (Math.random() - 0.5) * 10;
-        this.y = y + (Math.random() - 0.5) * 10;
-        this.baseSize = Math.random() * 2.5 + 2; // Size of individual dots
+        this.x = x + (Math.random() - 0.5) * 50; // Spawn scattered
+        this.y = y + (Math.random() - 0.5) * 50;
+        this.baseSize = Math.random() * 2 + 2; 
         this.size = this.baseSize;
-        this.color = color;
-        // Subtle floating movement speed
-        this.angle = Math.random() * Math.PI * 2;
-        this.speed = Math.random() * 0.5 + 0.2;
-      }
-
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
         
-        // Add a brilliant neon glow to each dot
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = this.color;
-        ctx.fill();
-        ctx.shadowBlur = 0; // Reset shadow for performance
+        // Floating mechanics
+        this.angle = Math.random() * Math.PI * 2;
+        this.speed = Math.random() * 0.4 + 0.1;
       }
 
       update() {
-        // Organic idle floating motion
+        // Organic floating motion
         this.angle += 0.02;
         let driftX = Math.cos(this.angle) * this.speed;
         let driftY = Math.sin(this.angle) * this.speed;
@@ -76,23 +63,44 @@
         let currentTargetX = this.targetX + driftX;
         let currentTargetY = this.targetY + driftY;
 
-        // Smoothly ease toward target floating position
-        this.x += (currentTargetX - this.x) * 0.1;
-        this.y += (currentTargetY - this.y) * 0.1;
+        // Reactive touch physics - dots scatter and reform
+        let dx = touch.x - this.x;
+        let dy = touch.y - this.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        
+        let forceDirectionX = dx / distance;
+        let forceDirectionY = dy / distance;
+        let maxDistance = 120;
+        let force = (maxDistance - distance) / maxDistance;
+        let directionX = forceDirectionX * force * 15;
+        let directionY = forceDirectionY * force * 15;
 
-        // Reactive logic: Grow dots when finger gets close
-        if (touch.active && touch.x !== null) {
-          let dx = touch.x - this.x;
-          let dy = touch.y - this.y;
-          let distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance < 70) {
-            this.size = this.baseSize * (1 + (70 - distance) / 35);
-          } else {
-            this.size = this.baseSize;
-          }
+        if (distance < maxDistance) {
+          this.x -= directionX;
+          this.y -= directionY;
+          this.size = this.baseSize * 2; // Swell up when touched
         } else {
+          // Return smoothly to target
+          this.x += (currentTargetX - this.x) * 0.1;
+          this.y += (currentTargetY - this.y) * 0.1;
           this.size = this.baseSize;
         }
+
+        // Seamless Color Math (Flows continuously over time and position)
+        this.hue = ((this.x * 0.2) + timeTick) % 360;
+        this.color = `hsl(${this.hue}, 90%, 65%)`;
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        
+        // Glow effect
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.fill();
+        ctx.shadowBlur = 0; 
       }
     }
 
@@ -101,28 +109,24 @@
       const w = window.innerWidth;
       const h = window.innerHeight;
 
-      // Create a hidden canvas to snapshot the text pixels
       const tCanvas = document.createElement('canvas');
       const tCtx = tCanvas.getContext('2d');
       tCanvas.width = w;
       tCanvas.height = h;
 
-      // Text styling inside snapshot
-      const fontSize = Math.min(w * 0.22, 110);
+      // Adjust text size for mobile bounds
+      const fontSize = Math.min(w * 0.25, 120); 
       tCtx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
       tCtx.textAlign = 'center';
       tCtx.textBaseline = 'middle';
       tCtx.fillStyle = 'white';
 
-      // Draw text stacked vertically for mobile layouts
-      tCtx.fillText('dash', w / 2, h / 2 - fontSize * 0.6);
-      tCtx.fillText('is gay', w / 2, h / 2 + fontSize * 0.6);
+      // Draw text ("dash" on top, "is gay" on bottom)
+      tCtx.fillText('dash', w / 2, h / 2 - fontSize * 0.55);
+      tCtx.fillText('is gay', w / 2, h / 2 + fontSize * 0.55);
 
-      // Scan the text pixels
       const imgData = tCtx.getImageData(0, 0, w, h).data;
-      
-      // Control how dense the particles are (gap between dots)
-      const gap = Math.min(6, Math.max(4, Math.floor(w / 80)));
+      const gap = Math.min(7, Math.max(4, Math.floor(w / 70))); // Particle density
 
       for (let y = 0; y < h; y += gap) {
         for (let x = 0; x < w; x += gap) {
@@ -130,34 +134,40 @@
           const alpha = imgData[index + 3];
 
           if (alpha > 128) {
-            // Generate shifting colors across the screen width (Cyan -> Purple -> Pink)
-            const ratio = x / w;
-            let color;
-            if (ratio < 0.4) color = '#00f0ff';       // Vibrant Cyan
-            else if (ratio < 0.7) color = '#8a2be2';  // Deep Purple
-            else color = '#ff007a';                   // Neon Pink
-
-            particles.push(new Particle(x, y, color));
+            particles.push(new Particle(x, y));
           }
         }
       }
     }
 
     function animate() {
-      // Create a reactive, trailing dark fluid background instead of a harsh clear
-      ctx.fillStyle = 'rgba(5, 5, 8, 0.25)';
+      timeTick += 1.5; // Controls the speed of the color flow
+
+      // Trailing dark background (creates motion blur)
+      ctx.fillStyle = 'rgba(3, 3, 5, 0.3)';
       ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-      // Draw a subtle reactive background ambient light following the touch pointer
-      if (touch.active && touch.x !== null) {
-        let gradient = ctx.createRadialGradient(touch.x, touch.y, 10, touch.x, touch.y, 130);
-        gradient.addColorStop(0, 'rgba(138, 43, 226, 0.15)');
-        gradient.addColorStop(1, 'rgba(5, 5, 8, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      // Draw reactive connecting lines to the touch point
+      if (touch.active) {
+        for (let i = 0; i < particles.length; i++) {
+          let dx = touch.x - particles[i].x;
+          let dy = touch.y - particles[i].y;
+          let distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < 100) {
+            ctx.beginPath();
+            ctx.strokeStyle = particles[i].color;
+            ctx.lineWidth = 0.5;
+            ctx.globalAlpha = 1 - (distance / 100);
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(touch.x, touch.y);
+            ctx.stroke();
+            ctx.globalAlpha = 1; // reset alpha
+          }
+        }
       }
 
-      // Update and draw each word particle
+      // Update and draw particles
       for (let i = 0; i < particles.length; i++) {
         particles[i].update();
         particles[i].draw();
@@ -166,7 +176,7 @@
       requestAnimationFrame(animate);
     }
 
-    // Touch and Mobile Gesture Event Listeners
+    // Mobile touch listeners
     window.addEventListener('touchstart', (e) => {
       touch.active = true;
       touch.x = e.touches[0].clientX;
@@ -174,19 +184,20 @@
     }, { passive: true });
 
     window.addEventListener('touchmove', (e) => {
+      touch.active = true;
       touch.x = e.touches[0].clientX;
       touch.y = e.touches[0].clientY;
     }, { passive: true });
 
     window.addEventListener('touchend', () => {
       touch.active = false;
-      touch.x = null;
-      touch.y = null;
+      touch.x = -1000;
+      touch.y = -1000;
     });
 
     window.addEventListener('resize', resize);
     
-    // Fire it up
+    // Initialize
     resize();
     animate();
   </script>
